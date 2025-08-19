@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Connection Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        .section h3 {
+            margin-top: 0;
+            color: #555;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .status {
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.testing {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .test-button {
+            background: #28a745;
+        }
+
+        .test-button:hover {
+            background: #218838;
+        }
+
+        .danger-button {
+            background: #dc3545;
+        }
+
+        .danger-button:hover {
+            background: #c82333;
+        }
+
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+
+        .log-info {
+            background: #e7f3ff;
+            border-left: 3px solid #007bff;
+        }
+
+        .log-success {
+            background: #d4edda;
+            border-left: 3px solid #28a745;
+        }
+
+        .log-error {
+            background: #f8d7da;
+            border-left: 3px solid #dc3545;
+        }
+
+        .log-warning {
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+        }
+
+        input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px;
+            width: 200px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🔌 Socket.IO Connection Test</h1>
+
+    <!-- Connection Status -->
+    <div class="section">
+        <h3>Connection Status</h3>
+        <div id="connectionStatus" class="status disconnected">
+            ❌ Not Connected
+        </div>
+        <p><strong>Server URL:</strong> <span id="serverUrl">http://localhost:3000</span></p>
+        <p><strong>Socket ID:</strong> <span id="socketId">None</span></p>
+        <p><strong>Connection Time:</strong> <span id="connectionTime">None</span></p>
+
+        <button onclick="connectSocket()">Connect</button>
+        <button onclick="disconnectSocket()" class="danger-button">Disconnect</button>
+        <button onclick="reconnectSocket()">Reconnect</button>
+    </div>
+
+    <div class="grid">
+        <!-- Basic Tests -->
+        <div class="section">
+            <h3>Basic Tests</h3>
+
+            <button onclick="testBasicEmit()" class="test-button">Test Basic Emit</button>
+            <button onclick="testPing()" class="test-button">Test Ping</button>
+            <button onclick="testServerStats()" class="test-button">Get Server Stats</button>
+
+            <h4>Join Room Test</h4>
+            <input type="text" id="usernameInput" placeholder="Username" value="TestUser">
+            <input type="text" id="roomInput" placeholder="Room" value="test-room">
+            <button onclick="joinRoom()" class="test-button">Join Room</button>
+            <button onclick="leaveRoom()" class="danger-button">Leave Room</button>
+
+            <h4>Send Message Test</h4>
+            <input type="text" id="messageInput" placeholder="Message" value="Hello from HTML test!">
+            <button onclick="sendMessage()" class="test-button">Send Message</button>
+        </div>
+
+        <!-- Laravel Integration Tests -->
+        <div class="section">
+            <h3>Laravel Integration Tests</h3>
+
+            <button onclick="testLaravelRoomCreation()" class="test-button">Test Room Creation</button>
+            <button onclick="testLaravelMessage()" class="test-button">Test Laravel Message</button>
+            <button onclick="testPresenceUpdate()" class="test-button">Test Presence Update</button>
+
+            <h4>Custom Laravel Event</h4>
+            <input type="text" id="laravelEventInput" placeholder="Event Name" value="custom_laravel_test">
+            <button onclick="sendCustomLaravelEvent()" class="test-button">Send Custom Event</button>
+
+            <h4>Collaboration Room Test</h4>
+            <input type="text" id="collabTitleInput" placeholder="Collaboration Title" value="Test Project">
+            <button onclick="simulateCollaborationRoom()" class="test-button">Simulate Collab Room</button>
+        </div>
+    </div>
+
+    <!-- Event Log -->
+    <div class="section">
+        <h3>Event Log</h3>
+        <button onclick="clearLog()" class="danger-button">Clear Log</button>
+        <button onclick="toggleAutoScroll()">Toggle Auto-Scroll</button>
+        <div id="eventLog" class="log"></div>
+    </div>
+</div>
+
+<script>
+    let socket = null;
+    let autoScroll = true;
+    let currentRoom = null;
+    let currentUsername = null;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        log('Page loaded. Ready to connect to Socket.IO server.', 'info');
+        updateConnectionStatus(false);
+    });
+
+    function connectSocket() {
+        if (socket) {
+            log('Socket already exists. Disconnecting first...', 'warning');
+            socket.disconnect();
+        }
+
+        const serverUrl = document.getElementById('serverUrl').textContent;
+        log(`Attempting to connect to ${serverUrl}...`, 'info');
+
+        socket = io(serverUrl, {
+            transports: ['websocket', 'polling'],
+            timeout: 10000,
+            forceNew: true
+        });
+
+        // Connection events
+        socket.on('connect', () => {
+            log(`✅ Connected to server! Socket ID: ${socket.id}`, 'success');
+            updateConnectionStatus(true);
+            document.getElementById('socketId').textContent = socket.id;
+            document.getElementById('connectionTime').textContent = new Date().toLocaleTimeString();
+        });
+
+        socket.on('disconnect', (reason) => {
+            log(`❌ Disconnected from server. Reason: ${reason}`, 'error');
+            updateConnectionStatus(false);
+            document.getElementById('socketId').textContent = 'None';
+        });
+
+        socket.on('connect_error', (error) => {
+            log(`❌ Connection error: ${error.message}`, 'error');
+            updateConnectionStatus(false);
+        });
+
+        // Regular Socket.IO events
+        socket.on('joined', (data) => {
+            log(`✅ Joined room: ${data.room} (${data.userCount} users)`, 'success');
+            currentRoom = data.room;
+        });
+
+        socket.on('user_joined', (data) => {
+            log(`👤 User joined: ${data.content}`, 'info');
+        });
+
+        socket.on('user_left', (data) => {
+            log(`👤 User left: ${data.content}`, 'info');
+        });
+
+        socket.on('receive_message', (data) => {
+            log(`💬 Message: [${data.username}] ${data.content}`, 'info');
+        });
+
+        socket.on('users_update', (users) => {
+            log(`👥 Users update: ${users.length} users in room`, 'info');
+        });
+
+        socket.on('error', (data) => {
+            log(`❌ Server error: ${data.message}`, 'error');
+        });
+
+        // Laravel integration events
+        socket.on('collaboration_room_created', (data) => {
+            log(`🏠 Collaboration room created: ${data.room.name}`, 'success');
+            log(`   New user: ${data.new_user.name}`, 'info');
+        });
+
+        socket.on('user_presence_changed', (data) => {
+            log(`👤 Presence update: User ${data.user_id} is ${data.status}`, 'info');
+        });
+
+        socket.on('laravel_test', (data) => {
+            log(`🔗 Laravel test event: ${data.message}`, 'success');
+        });
+
+        // Server events
+        socket.on('server_shutdown', (data) => {
+            log(`🛑 Server shutdown: ${data.message}`, 'warning');
+        });
+
+        // Custom events for testing
+        socket.on('diagnosis_test', (data) => {
+            log(`🔍 Diagnosis test received: ${data.message}`, 'success');
+        });
+
+        socket.on('laravel_pure_socket_test', (data) => {
+            log(`🔌 Laravel pure socket test: ${data.message}`, 'success');
+        });
+    }
+
+    function disconnectSocket() {
+        if (socket) {
+            socket.disconnect();
+            log('🔌 Manually disconnected', 'warning');
+        } else {
+            log('⚠️ No socket to disconnect', 'warning');
+        }
+    }
+
+    function reconnectSocket() {
+        log('🔄 Reconnecting...', 'info');
+        disconnectSocket();
+        setTimeout(connectSocket, 1000);
+    }
+
+    function updateConnectionStatus(connected) {
+        const statusEl = document.getElementById('connectionStatus');
+        if (connected) {
+            statusEl.className = 'status connected';
+            statusEl.textContent = '✅ Connected';
+        } else {
+            statusEl.className = 'status disconnected';
+            statusEl.textContent = '❌ Not Connected';
+        }
+    }
+
+    function testBasicEmit() {
+        if (!socket || !socket.connected) {
+            log('❌ Not connected to server', 'error');
+            return;
+        }
+
+        const testData = {
+            message: 'Hello from HTML test client',
+            timestamp: new Date().toISOString(),
+            test_id: Math.random().toString(36).substr(2, 9)
+        };
+
+        log('📡 Emitting basic test event...', 'info');
+        socket.emit('html_test_event', testData);
+        log(`   Test ID: ${testData.test_id}`, 'info');
+    }
+
+    function testPing() {
+        if (!socket || !socket.connected) {
+            log('❌ Not connected to server', 'error');
+            return;
+        }
+
+        log('🏓 Sending ping...', 'info');
+        const startTime = Date.now();
+
+        socket.emit('ping', { timestamp: new Date().toISOString() });
+
+        socket.once('pong', (data) => {
+            const latency = Date.now() - startTime;
+            log(`🏓 Pong received! Latency: ${latency}ms`, 'success');
+        });
+
+        // Timeout for pong
+        setTimeout(() => {
+            log('⏰ Ping timeout - no pong received', 'warning');
+        }, 5000);
+    }
+
+    function testServerStats() {
+        fetch('http://localhost:3000/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                log('📊 Server Stats:', 'success');
+                log(`   Connected Users: ${data.connectedUsers}`, 'info');
+                log(`   Active Rooms: ${data.activeRooms}`, 'info');
+                log(`   Laravel Sockets: ${data.laravelSockets || 0}`, 'info');
+                log(`   Total Messages: ${data.totalMessages}`, 'info');
+            })
+            .catch(error => {
+                log(`❌ Failed to fetch stats: ${error.message}`, 'error');
+            });
+    }
+
+    function joinRoom() {
+        if (!socket || !socket.connected) {
+            log('❌ Not connected to server', 'error');
+            return;
+        }
+
+        const username = document.getElementById('usernameInput').value || 'TestUser';
+        const room = document.getElementById('roomInput').value || 'test-room';
+
+        currentUsername = username;
+
+        log(`🚪 Joining room: ${room} as ${username}`, 'info');
+
+        socket.emit('join', {
+            username: username,
+            room: room,
+            userId: 999 // Test Laravel user ID
+        });
+    }
+
+    function leaveRoom() {
+        if (!socket || !socket.connected) {
+            log('❌ Not connected to server', 'error');
+            return;
+        }
+
+        if (currentRoom) {
+            log(`🚪 Leaving room: ${currentRoom}`, 'warning');
+            socket.emit('change_room', 'general');
+            currentRoom = null;
+        } else {
+            log('⚠️ Not in any room', 'warning');
+        }
+    }
+
+    function sendMessage() {
+        if (!socket || !socket.connected) {
+            log('❌ Not connected to server', 'error');
+            return;
+        }
+
+        if (!currentRoom) {
+            log('⚠️ Not in any room. Join a room first.', 'warning');
+            return;
+        }
+
+        const message = document.getElementById('messageInput').value || 'Hello from HTML test!';
+
+        log(`💬 Sending message: ${message}`, 'info');
+
+        socket.emit('send_message', {
+            content: message
+        });
+
+        // Clear input
+        document.getElementById('messageInput').value = '';
+    }
+
+    function testLaravelRoomCreation() {
+        if (!socket || !socket.connected) {
+            log('❌ Not connected to server', 'error');
+            return;
+        }
+
+        const roomData = {
+            room: {
+                id: Math.floor(Math.random() * 1000),
+                slug: 'html-test-room-' + Date.now(),
+                name: 'HTML Test Room',
+                type: 'collaboration',
+                collaboration_id: 123
+            },
+            new_user: {
+                id: 456,
+                name: 'HTML Test User',
+                email: 'html@test.com'
+            }
+        };
+
+        log('🏠 Simulating Laravel room creation...', 'info');
+        socket.emit('laravel_room_created', roomData);
+        log(`   Room: ${roomData.room.name} (${roomData.room.slug})`, 'info');
+    }
+
+    function testLaravelMessage() {
+        if (!socket || !socket.connected) {
+            log('❌ Not connected to server', 'error');
+            return;
+        }
+
+        const roomSlug = 'html-test-room-' + Date.now();
+        const messageData = {
+            room: roomSlug,
+            event: 'receive_message',
+            data: {
+                id: 'html_test_msg_' + Date.now(),
+                username: 'Laravel System',
+                content: '🎉 This message was sent from HTML simulating Laravel!',
+                type: 'system',
+                metadata: {
+                    is_system_message: true,
+                    source: 'html_test'
+                },
+                timestamp: new Date().toISOString(),
+                room: roomSlug,
+                socketId: 'laravel_system',
+                isSystemMessage: true
+            }
+        };
+
+        log('📢 Simulating Laravel message broadcast...', 'info');
+        socket.emit('laravel_emit_to_room', messageData);
+        log(`   Room: ${roomSlug}`, 'info');
+        log(`   Message: ${messageData.data.content}`, 'info');
+    }
+
+    function testPresenceUpdate() {
+        if (!socket || !socket.connected) {
+            log('❌ Not connected to server', 'error');
+            return;
+        }
+
+        const presenceData = {
+            user_id: 789,
+            status: 'online',
+            room: currentRoom || 'test-room',
+            timestamp: new Date().toISOString(),
+            source: 'html_test'
+        };
+
+        log('👤 Simulating Laravel presence update...', 'info');
+        socket.emit('laravel_presence_update', presenceData);
+        log(`   User: ${presenceData.user_id} -> ${presenceData.status}`, 'info');
+    }
+
+    function sendCustomLaravelEvent() {
+        if (!socket || !socket.connected) {
+            log('❌ Not connected to server', 'error');
+            return;
+        }
+
+        const eventName = document.getElementById('laravelEventInput').value || 'custom_laravel_test';
+        const eventData = {
+            message: 'Custom Laravel event from HTML',
+            timestamp: new Date().toISOString(),
+            event_name: eventName,
+            random_id: Math.random().toString(36).substr(2, 9)
+        };
+
+        log(`🎯 Sending custom Laravel event: ${eventName}`, 'info');
+        socket.emit('laravel_emit', {
+            event: eventName,
+            payload: eventData
+        });
+    }
+
+    function simulateCollaborationRoom() {
+        if (!socket || !socket.connected) {
+            log('❌ Not connected to server', 'error');
+            return;
+        }
+
+        const title = document.getElementById('collabTitleInput').value || 'Test Project';
+        const roomSlug = title.toLowerCase().replace(/\s+/g, '-') + '-team-chat-' + Date.now();
+
+        // Simulate room creation
+        const roomData = {
+            room: {
+                id: Math.floor(Math.random() * 1000),
+                slug: roomSlug,
+                name: title + ' - Team Chat',
+                type: 'collaboration',
+                collaboration_id: Math.floor(Math.random() * 100)
+            },
+            new_user: {
+                id: 101,
+                name: 'New Collaborator',
+                email: 'collaborator@test.com'
+            }
+        };
+
+        log(`🎯 Simulating collaboration: ${title}`, 'info');
+        socket.emit('laravel_room_created', roomData);
+
+        // Send welcome message after room creation
+        setTimeout(() => {
+            const welcomeData = {
+                room: roomSlug,
+                event: 'receive_message',
+                data: {
+                    id: 'welcome_' + Date.now(),
+                    username: 'System',
+                    content: `🎉 Welcome to ${title}! Let's collaborate!`,
+                    type: 'system',
+                    metadata: {
+                        is_system_message: true,
+                        collaboration_title: title
+                    },
+                    timestamp: new Date().toISOString(),
+                    room: roomSlug,
+                    isSystemMessage: true
+                }
+            };
+
+            socket.emit('laravel_emit_to_room', welcomeData);
+            log(`💬 Sent welcome message to ${roomSlug}`, 'success');
+        }, 1000);
+    }
+
+    function clearLog() {
+        document.getElementById('eventLog').innerHTML = '';
+        log('📜 Log cleared', 'info');
+    }
+
+    function toggleAutoScroll() {
+        autoScroll = !autoScroll;
+        log(`📜 Auto-scroll: ${autoScroll ? 'ON' : 'OFF'}`, 'info');
+    }
+
+    function log(message, type = 'info') {
+        const logDiv = document.getElementById('eventLog');
+        const timestamp = new Date().toLocaleTimeString();
+
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-entry log-${type}`;
+        logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+
+        logDiv.appendChild(logEntry);
+
+        if (autoScroll) {
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Also log to console
+        console.log(`[${timestamp}] ${message}`);
+    }
+
+    // Auto-connect on page load
+    setTimeout(() => {
+        connectSocket();
+    }, 1000);
+</script>
+</body>
+</html>
