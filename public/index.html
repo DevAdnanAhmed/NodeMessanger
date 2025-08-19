@@ -730,7 +730,7 @@
 
     // Initialize socket connection
     function initSocket() {
-        socket = io({
+        socket = io('http://localhost:3000',{
             transports: ['websocket', 'polling'],
             upgrade: true,
             rememberUpgrade: true
