@@ -11,8 +11,9 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
-        origin: process.env.CLIENT_URL || "*",
-        methods: ["GET", "POST"]
+        origin: "*", // Allow all origins for external access
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 
@@ -23,7 +24,7 @@ app.use(helmet({
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
             styleSrc: ["'self'", "'unsafe-inline'"],
-            connectSrc: ["'self'", "ws:", "wss:"]
+            connectSrc: ["'self'", "ws:", "wss:", "*"] // Allow external connections
         }
     }
 }));
@@ -32,9 +33,6 @@ app.use(compression());
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Serve static files
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Store connected users and rooms
 const users = new Map();
@@ -449,14 +447,21 @@ io.on('connection', (socket) => {
 
 // Routes
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.json({
+        status: 'Socket.IO Chat Server Running',
+        timestamp: new Date().toISOString(),
+        connectedUsers: users.size,
+        activeRooms: rooms.size
+    });
 });
 
 app.get('/health', (req, res) => {
     res.json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        uptime: process.uptime()
+        uptime: process.uptime(),
+        connectedUsers: users.size,
+        activeRooms: rooms.size
     });
 });
 
@@ -504,14 +509,18 @@ app.use((req, res) => {
     });
 });
 
+// Environment configuration
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || 'localhost';
+const HOST = '0.0.0.0'; // BIND TO ALL INTERFACES FOR EXTERNAL ACCESS
 
-server.listen(PORT, () => {
+// Start server with external binding
+server.listen(PORT, HOST, () => {
     console.log(`🚀 Server running on http://${HOST}:${PORT}`);
+    console.log(`🌍 External access: Available on all network interfaces`);
     console.log(`📊 Stats available at http://${HOST}:${PORT}/api/stats`);
     console.log(`🏥 Health check at http://${HOST}:${PORT}/health`);
     console.log(`📅 Started at ${new Date().toISOString()}`);
+    console.log(`✅ Ready for external connections from browsers`);
 });
 
 // Graceful shutdown
