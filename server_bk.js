@@ -510,7 +510,7 @@ app.use((req, res) => {
 });
 
 // Environment configuration
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 80;
 const HOST = '0.0.0.0'; // BIND TO ALL INTERFACES FOR EXTERNAL ACCESS
 
 // Start server with external binding
