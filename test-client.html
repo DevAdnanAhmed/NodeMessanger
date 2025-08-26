@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Socket.IO Chat Test</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f4f4f4;
+        }
+        #chat-container {
+            width: 400px;
+            margin: auto;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #messages {
+            list-style: none;
+            padding: 0;
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        #messages li {
+            padding: 5px 10px;
+            margin-bottom: 5px;
+            background: #e9e9e9;
+            border-radius: 5px;
+        }
+        input, button {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background: #4caf50;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+<div id="chat-container">
+    <h2>Socket.IO Chat Test</h2>
+    <label>Room ID: </label>
+    <input type="text" id="roomId" placeholder="Enter Room ID" />
+    <button onclick="joinRoom()">Join Room</button>
+    <ul id="messages"></ul>
+    <input id="messageInput" placeholder="Type your message..." />
+    <button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+    const socket = io("http://127.0.0.1:5000");
+    let currentRoomId = null;
+
+    // Join a chat room
+    function joinRoom() {
+        const roomId = document.getElementById("roomId").value;
+        if (!roomId) {
+            alert("Please enter a Room ID!");
+            return;
+        }
+        currentRoomId = roomId;
+        socket.emit("joinRoom", roomId);
+        addMessage(`🟢 Joined Room: ${roomId}`);
+    }
+
+    // Send message to room
+    function sendMessage() {
+        const input = document.getElementById("messageInput");
+        const content = input.value.trim();
+        if (!currentRoomId) {
+            alert("Join a room first!");
+            return;
+        }
+        if (content === "") return;
+
+        const message = {
+            roomId: currentRoomId,
+            userId: Math.floor(Math.random() * 1000), // For testing
+            content: content
+        };
+
+        // Emit message to server
+        socket.emit("sendMessage", message);
+
+        // Show your own message immediately
+        addMessage(`You: ${content}`);
+        input.value = "";
+    }
+
+    // Receive messages from server
+    socket.on("receiveMessage", (data) => {
+        addMessage(`User ${data.userId}: ${data.content}`);
+    });
+
+    // Helper: Add message to chat box
+    function addMessage(msg) {
+        const li = document.createElement("li");
+        li.textContent = msg;
+        document.getElementById("messages").appendChild(li);
+    }
+</script>
+</body>
+</html>
